@@ -33,7 +33,11 @@
 #include "asserts.h"
 #include "compiler.h"
 #include <cstddef>
+#ifdef HS_DISABLE_HMAC
+#    include "hs_nocrypto.h"
+#else
 #include <openssl/hmac.h>
+#endif
 #include "hs_db_hmac_key.h"
 #include "database.h"
 #include "grey.h"

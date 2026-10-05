@@ -69,9 +69,13 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(SYSTEM include)
 
-# OpenSSL is required for HMAC-SHA256 database integrity
-find_package(OpenSSL REQUIRED)
-include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+if (HS_DISABLE_HMAC)
+    add_definitions(-DHS_DISABLE_HMAC)
+else ()
+    # OpenSSL is required for HMAC-SHA256 database integrity
+    find_package(OpenSSL REQUIRED)
+    include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+endif ()
 
 include (${CMAKE_MODULE_PATH}/boost.cmake)
 
@@ -100,6 +104,8 @@ message(STATUS "Build date: ${BUILD_DATE}")
 if(${RAGEL} STREQUAL "RAGEL-NOTFOUND")
     message(FATAL_ERROR "Ragel state machine compiler not found")
 endif()
+
+option(HS_DISABLE_HMAC "Disable HMAC-SHA256 database integrity checks (drops the OpenSSL dependency)" OFF)
 
 option(OPTIMISE "Turns off compiler optimizations (on by default unless debug output enabled or coverage testing)" TRUE)
 
@@ -1349,11 +1355,13 @@ else (FAT_RUNTIME)
 
 endif (NOT FAT_RUNTIME)
 
-# Link OpenSSL to all library targets that need HMAC
-if (NOT BUILD_SHARED_LIBS)
-    target_link_libraries(hs_runtime OpenSSL::Crypto)
-    target_link_libraries(hs OpenSSL::Crypto)
-endif()
+if (NOT HS_DISABLE_HMAC)
+    if (NOT BUILD_SHARED_LIBS)
+        # Link OpenSSL to all library targets that need HMAC
+        target_link_libraries(hs_runtime OpenSSL::Crypto)
+        target_link_libraries(hs OpenSSL::Crypto)
+    endif ()
+endif ()
 
 if (NOT BUILD_SHARED_LIBS)
     install(TARGETS hs_runtime DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -1377,7 +1385,9 @@ if (BUILD_STATIC_AND_SHARED OR BUILD_SHARED_LIBS)
         OUTPUT_NAME hs_runtime
         MACOSX_RPATH ON
         LINKER_LANGUAGE C)
-    target_link_libraries(hs_runtime_shared OpenSSL::Crypto)
+    if (NOT HS_DISABLE_HMAC)
+        target_link_libraries(hs_runtime_shared OpenSSL::Crypto)
+    endif ()
     install(TARGETS hs_runtime_shared
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -1419,7 +1429,9 @@ if (BUILD_STATIC_AND_SHARED OR BUILD_SHARED_LIBS)
     add_library(hs_shared SHARED ${hs_shared_SRCS} hs.def)
 
     add_dependencies(hs_shared ragel_Parser)
-    target_link_libraries(hs_shared OpenSSL::Crypto)
+    if (NOT HS_DISABLE_HMAC)
+        target_link_libraries(hs_shared OpenSSL::Crypto)
+    endif ()
     set_target_properties(hs_shared PROPERTIES
         OUTPUT_NAME hs
         VERSION ${LIB_VERSION}

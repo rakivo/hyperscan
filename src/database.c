@@ -41,8 +41,12 @@
 #include "hs_version.h"
 #include "ue2common.h"
 #include "database.h"
-#include <openssl/hmac.h>
-#include <openssl/crypto.h>
+#ifdef HS_DISABLE_HMAC
+#    include "hs_nocrypto.h"
+#else
+#    include <openssl/hmac.h>
+#    include <openssl/crypto.h>
+#endif
 #include "hs_db_hmac_key.h"
 #include "nfa/nfa_internal.h"
 #include "nfa/limex_internal.h"
@@ -445,7 +449,7 @@ hs_error_t db_validate_mcsheng_succ_table(const struct RoseEngine *rose,
 
     return HS_SUCCESS;
 }
-	
+
 
 /**
  * \brief Validate LBR NFA repeatInfoOffset fields.
@@ -713,7 +717,7 @@ hs_error_t db_validate_tamarama_offsets(const struct RoseEngine *rose,
         if (unlikely(ni->nfaOffset + nfa->length > rose_size)) {
             return HS_INVALID;
         }
-        
+
         if (unlikely(nfa->length <= sizeof(struct NFA))) {
             return HS_INVALID;
         }
@@ -1846,7 +1850,7 @@ hs_error_t db_validate_rose_offsets(const hs_database_t *db) {
         DEBUG_PRINTF("mcsheng successor table validation failed\n");
         return HS_INVALID;
     }
-	
+
     /* Validate MPV active/reporter offsets (CWE-787). */
     if (unlikely(db_validate_mpv_offsets(rose, rose_size) != HS_SUCCESS)) {
         DEBUG_PRINTF("MPV offset validation failed\n");
